@@ -166,7 +166,7 @@ function renderPlaylists() {
     card.innerHTML = `
       <span class="sleeve"><img src="${imageFor(playlist) || "./assets/studio-gh-mark.svg"}" alt="" loading="lazy"><span class="disc"></span></span>
       <span class="record-name"></span>
-      <span class="record-meta">${playlist.tracks?.total ?? "—"} tracks</span>`;
+      <span class="record-meta">${playlist.items?.total ?? playlist.tracks?.total ?? "—"} tracks</span>`;
     card.querySelector(".record-name").textContent = playlist.name;
     card.addEventListener("click", () => openPlaylist(playlist));
     shelf.append(card);

@@ -20,7 +20,7 @@ const STORAGE = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0 };
+const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false };
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -227,7 +227,7 @@ function renderPlaylists() {
       <span class="record-meta">${playlist.items?.total ?? playlist.tracks?.total ?? "—"} tracks</span>`;
     card.querySelector(".record-name").textContent = playlist.name;
     card.addEventListener("click", (event) => {
-      if (state.ignorePileClick) { event.preventDefault(); state.ignorePileClick = false; return; }
+      if (state.suppressPileClick) { event.preventDefault(); state.suppressPileClick = false; return; }
       openPlaylist(playlist);
     });
     shelf.append(card);
@@ -286,7 +286,9 @@ function renderTracks(tracks) {
       <span class="track-play">PLAY ↗</span>`;
     row.querySelector("strong").textContent = track.name;
     row.querySelector("small").textContent = (track.artists || []).map((artist) => artist.name).join(", ");
+    row.dataset.trackIndex = String(index);
     row.addEventListener("click", () => {
+      state.currentTrackIndex = index;
       state.selectedTrack = track;
       state.recordPlaced = true;
       $("#turntable").classList.add("record-placed", "needle-down");
@@ -295,6 +297,7 @@ function renderTracks(tracks) {
       $("#return-record").disabled = false;
       $("#play-selected").disabled = false;
       $("#booth-caption").textContent = `Now playing · ${track.name}`;
+      markActiveTrack(track.uri);
       $("#now-title").textContent = track.name;
       $("#now-artist").textContent = (track.artists || []).map((artist) => artist.name).join(", ");
       $("#now-cover").src = cover || "./assets/studio-gh-mark.svg";
@@ -304,6 +307,15 @@ function renderTracks(tracks) {
   });
 }
 
+function markActiveTrack(uri) {
+  document.querySelectorAll(".track-row").forEach((row) => {
+    const index = Number(row.dataset.trackIndex);
+    const active = state.currentTracks[index]?.uri === uri;
+    row.classList.toggle("is-playing", active);
+    const label = row.querySelector(".track-play");
+    if (label) label.textContent = active ? "NOW PLAYING" : "PLAY ↗";
+  });
+}
 function formatTime(ms) {
   const seconds = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -312,7 +324,8 @@ function updateProgressUI() {
   const progress = $("#progress");
   if (!progress) return;
   const duration = state.playbackDuration || 0;
-  const position = Math.min(state.playbackPosition || 0, duration);
+  const livePosition = state.playbackPosition + (!state.playbackPaused ? Date.now() - state.playbackUpdatedAt : 0);
+  const position = Math.min(livePosition || 0, duration);
   progress.value = duration ? String(Math.round(position / duration * 1000)) : "0";
   $("#elapsed").textContent = formatTime(position);
   $("#duration").textContent = formatTime(duration);
@@ -355,6 +368,14 @@ async function connectPlayer() {
     const track = playback.track_window.current_track;
     state.playbackDuration = playback.duration || 0;
     state.playbackPosition = playback.position || 0;
+    state.playbackUpdatedAt = Date.now();
+    state.playbackPaused = playback.paused;
+    state.currentTrackIndex = state.currentTracks.findIndex((item) => item.uri === track.uri);
+    state.selectedTrack = state.currentTracks[state.currentTrackIndex] || state.selectedTrack;
+    $("#turntable").classList.toggle("is-playing", !playback.paused);
+    $("#turntable").classList.toggle("needle-down", !playback.paused);
+    $("#booth-caption").textContent = playback.paused ? "Paused · ready when you are." : "Now playing · enjoy the record.";
+    markActiveTrack(track.uri);
     updateProgressUI();
     $("#now-title").textContent = track.name;
     $("#now-artist").textContent = track.artists.map((artist) => artist.name).join(", ");
@@ -381,8 +402,24 @@ async function playTrack(track) {
       method: "PUT",
       body: JSON.stringify({ uris: [track.uri] })
     });
+    $("#turntable").classList.add("record-placed", "needle-down", "is-playing");
+    $("#play-toggle").textContent = "Ⅱ";
+    markActiveTrack(track.uri);
     setStatus("Needle down. Enjoy the record.", "success");
   } catch (error) { setStatus(error.message, "error"); }
+}
+async function stepPlaylistTrack(direction) {
+  if (!state.currentTracks.length) {
+    if (direction < 0) state.player?.previousTrack();
+    else state.player?.nextTrack();
+    return;
+  }
+  const current = state.currentTrackIndex >= 0 ? state.currentTrackIndex : 0;
+  const next = (current + direction + state.currentTracks.length) % state.currentTracks.length;
+  state.currentTrackIndex = next;
+  state.selectedTrack = state.currentTracks[next];
+  markActiveTrack(state.selectedTrack.uri);
+  await playTrack(state.selectedTrack);
 }
 async function togglePlayback() {
   try {
@@ -411,6 +448,11 @@ async function boot() {
     setStatus("Spotify disconnected");
   });
   $("#play-toggle").addEventListener("click", togglePlayback);
+  $("#progress").addEventListener("input", (event) => {
+    if (!state.playbackDuration) return;
+    const preview = Math.round((Number(event.target.value) / 1000) * state.playbackDuration);
+    $("#elapsed").textContent = formatTime(preview);
+  });
   $("#progress").addEventListener("change", async (event) => {
     if (!state.player || !state.playbackDuration) return;
     const target = Math.round((Number(event.target.value) / 1000) * state.playbackDuration);
@@ -443,19 +485,23 @@ async function boot() {
     $("#return-record").disabled = true;
     $("#play-selected").disabled = true;
     $("#booth-caption").textContent = "Record returned to its sleeve.";
+    $("#turntable").classList.remove("record-placed", "needle-down", "is-playing");
   });
   document.querySelectorAll(".view-tab").forEach((tab) => tab.addEventListener("click", () => setCollectionView(tab.dataset.view)));
   const pile = $("#shelf");
   pile.addEventListener("pointerdown", (event) => {
-    if (state.collectionView !== "pile" || !event.isPrimary) return;
-    state.pileDrag = { x: event.clientX, y: event.clientY, rotation: state.pileRotation, pointerId: event.pointerId };
+    if (state.collectionView !== "pile" || !event.isPrimary || event.button !== 0) return;
+    state.pileDrag = {
+      x: event.clientX,
+      y: event.clientY,
+      rotation: state.pileRotation,
+      pointerId: event.pointerId,
+      target: event.target.closest(".record-card")
+    };
     state.pileMoved = false;
-    // Capture on the sleeve itself, not the stage: this preserves the sleeve as the click target after a tap.
-    const sleeveCard = event.target.closest(".record-card");
-    try { (sleeveCard || event.currentTarget).setPointerCapture(event.pointerId); } catch (_) {}
   });
-  pile.addEventListener("pointermove", (event) => {
-    if (!state.pileDrag) return;
+  window.addEventListener("pointermove", (event) => {
+    if (!state.pileDrag || event.pointerId !== state.pileDrag.pointerId) return;
     const dx = event.clientX - state.pileDrag.x;
     const dy = event.clientY - state.pileDrag.y;
     if (Math.hypot(dx, dy) > 7) state.pileMoved = true;
@@ -464,16 +510,15 @@ async function boot() {
       renderPileOrbit();
     }
   });
-  const finishPileDrag = () => {
-    if (!state.pileDrag) return;
+  window.addEventListener("pointerup", (event) => {
+    if (!state.pileDrag || event.pointerId !== state.pileDrag.pointerId) return;
     if (state.pileMoved) {
-      state.ignorePileClick = true;
-      window.setTimeout(() => { state.ignorePileClick = false; }, 350);
+      state.suppressPileClick = true;
+      window.setTimeout(() => { state.suppressPileClick = false; }, 220);
     }
     state.pileDrag = null;
-  };
-  pile.addEventListener("pointerup", finishPileDrag);
-  pile.addEventListener("pointercancel", finishPileDrag);
+  });
+  window.addEventListener("pointercancel", () => { state.pileDrag = null; });
   pile.addEventListener("wheel", (event) => {
     if (state.collectionView !== "pile") return;
     event.preventDefault();
@@ -489,9 +534,11 @@ async function boot() {
       renderPileOrbit();
     }
   });
-  $("#previous").addEventListener("click", () => state.player?.previousTrack());
-  $("#next").addEventListener("click", () => state.player?.nextTrack());
+  $("#previous").addEventListener("click", () => stepPlaylistTrack(-1));
+  $("#next").addEventListener("click", () => stepPlaylistTrack(1));
   $("#volume").addEventListener("input", (event) => state.player?.setVolume(Number(event.target.value) / 100));
+
+  window.setInterval(() => { if (!state.playbackPaused) updateProgressUI(); }, 250);
 
   const params = new URLSearchParams(location.search);
   const code = params.get("code");

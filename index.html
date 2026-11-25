@@ -34,6 +34,8 @@
         <p>YOUR PLAYLISTS · YOUR RECORDS</p>
       </div>
       
+      <form id="search-form" class="catalog-search" role="search"><span class="search-mark">⌕</span><input id="catalog-search" type="search" placeholder="Search all of Spotify, not just your playlists…" autocomplete="off" aria-label="Search Spotify catalog"><button type="submit">SEARCH ↗</button></form>
+      <section id="search-results" class="search-results" hidden><div class="subsection-head"><div><p class="eyebrow">OUTSIDE YOUR COLLECTION</p><h3>Found in the wider record shop.</h3></div></div><div id="search-list" class="search-list"></div></section>
       <div class="browse-switch" role="group" aria-label="Collection view">
         <button class="view-tab active" data-view="shelf">SHELF</button>
         <button class="view-tab" data-view="pile">PILE</button>
@@ -53,6 +55,7 @@
         <div class="booth-actions"><button id="return-record" class="return-button" disabled>RETURN RECORD TO SHELF ↗</button><span class="booth-action-note">PLAYBACK CONTROLLED BELOW</span></div>
         <p class="booth-footnote">SELECT A RECORD · DROP IT ON THE PLATTER · ENJOY THE SIDE</p>
       </section>
+      <section id="queue-panel" class="queue-panel"><div class="subsection-head"><div><p class="eyebrow">THE LISTENING QUEUE</p><h3>Coming up.</h3></div><span id="queue-count" class="queue-count">0 UP NEXT</span></div><div id="queue-list" class="queue-list"><p class="queue-empty">Start playing a record to see what is next.</p></div></section>
       <section id="collection" class="collection" hidden>
         <p class="eyebrow">NOW BROWSING · SELECT A TRACK TO PLAY</p>
         <div class="section-head"><div><h2 id="collection-title">Collection</h2><p id="collection-subtitle">Loading…</p></div></div>

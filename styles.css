@@ -144,3 +144,48 @@ footer{font-size:8px;letter-spacing:.18em;color:#77736a}
  .player{grid-template-columns:minmax(0,1fr) auto;gap:10px}
  .controls{gap:8px}.volume{display:none}
 }
+
+/* DEADWAX-inspired orbit view: an actual rotating constellation of sleeves */
+.shelf.pile-view{
+  position:relative;display:block;width:100%;height:clamp(470px,66vw,680px);min-height:470px;
+  margin:8px 0 28px;padding:0;overflow:hidden;touch-action:pan-y;cursor:grab;
+  background:radial-gradient(ellipse at 50% 50%,rgba(255,252,244,.035),transparent 57%);
+  border-top:1px solid rgba(247,243,233,.06);border-bottom:1px solid rgba(247,243,233,.06);
+  scrollbar-width:none;user-select:none;
+}
+.shelf.pile-view:active{cursor:grabbing}
+.shelf.pile-view:before{
+  content:"";position:absolute;left:50%;top:50%;width:min(86%,1100px);height:78%;
+  transform:translate(-50%,-50%);border:1px solid rgba(247,243,233,.045);border-radius:50%;
+  pointer-events:none;
+}
+.shelf.pile-view .record-card{
+  position:absolute;left:50%;top:50%;flex:none;width:clamp(58px,5.4vw,88px);height:auto;
+  margin:0;padding:0;background:transparent;border:0;transform-origin:center center;
+  transition:filter .22s ease,opacity .22s ease;will-change:transform;cursor:pointer;
+}
+.shelf.pile-view .record-card:hover{filter:brightness(1.15);z-index:150!important}
+.shelf.pile-view .sleeve{
+  position:relative;width:100%;aspect-ratio:1;overflow:hidden;border:1px solid rgba(255,252,244,.24);
+  border-radius:1px;box-shadow:0 7px 16px rgba(0,0,0,.48);background:#252522;
+}
+.shelf.pile-view .sleeve img{display:block;width:100%;height:100%;object-fit:cover}
+.shelf.pile-view .disc{display:none}
+.shelf.pile-view .record-name,.shelf.pile-view .record-meta{display:none}
+.shelf.pile-view:after{
+  content:"DRAG TO EXPLORE  ·  SELECT A SLEEVE";
+  position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+  color:rgba(247,243,233,.42);font-size:8px;letter-spacing:.2em;white-space:nowrap;pointer-events:none;
+}
+.browse-switch{margin-bottom:16px}
+.view-tab{cursor:pointer}
+.view-tab:focus-visible,.record-card:focus-visible{outline:2px solid var(--accent);outline-offset:5px}
+@media(min-width:1200px){
+ .shelf.pile-view{height:min(68vh,700px);min-height:560px}
+ .shelf.pile-view .record-card{width:clamp(68px,5vw,92px)}
+}
+@media(max-width:700px){
+ .shelf.pile-view{height:520px;min-height:520px}
+ .shelf.pile-view .record-card{width:clamp(48px,11vw,68px)}
+ .shelf.pile-view:before{width:92%;height:66%}
+}

@@ -406,3 +406,117 @@ html:fullscreen .player{z-index:50}
 .search-actions .search-play{background:var(--paper);color:var(--ink);border-color:var(--paper)}
 .search-actions button:disabled{opacity:.5;cursor:wait}
 @media(max-width:700px){.catalog-search{grid-template-columns:24px minmax(0,1fr);gap:8px}.catalog-search button{grid-column:2;justify-self:start}.search-row{grid-template-columns:36px minmax(0,1fr);gap:10px}.search-row .queue-cover{width:36px;height:36px}.search-actions{grid-column:2;justify-content:flex-start}.queue-row{grid-template-columns:24px 36px minmax(0,1fr);gap:9px}.queue-row .queue-cover{width:36px;height:36px}.queue-tag{display:none}.subsection-head{align-items:start}}
+
+
+/* Mobile-first listening layout: keep the record shop tactile, not compressed */
+@media(max-width:700px){
+  :root{--mobile-gutter:18px}
+  html{-webkit-text-size-adjust:100%;scroll-padding-top:18px}
+  body{padding-bottom:calc(142px + env(safe-area-inset-bottom));overflow-x:hidden}
+  .topbar{height:58px;padding:0 var(--mobile-gutter);gap:10px}
+  .brand{font-size:15px}
+  .brand img{width:26px;height:26px}
+  .top-note{font-size:7px;letter-spacing:.12em;white-space:nowrap}
+  .topbar .secondary{padding:7px 9px;font-size:8px}
+  main{width:100%;padding-left:var(--mobile-gutter);padding-right:var(--mobile-gutter)}
+  .hero{min-height:0;padding:48px 0 36px;grid-template-columns:1fr}
+  .hero-copy{max-width:560px}
+  .hero h1{font-size:clamp(44px,12vw,68px);line-height:.96;letter-spacing:-.075em}
+  .hero-copy>p:not(.eyebrow){max-width:36ch;font-size:13px;line-height:1.65}
+  .hero-art{display:none}
+  .section-head{gap:12px;margin:36px 0 18px}
+  .section-head h2{font-size:clamp(30px,9vw,42px)}
+  .section-head>p{display:none}
+  .browse-switch{margin-bottom:18px}
+  .view-tab{padding:12px 16px;min-height:42px}
+  #shelf.shelf-view{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 14px}
+  #shelf.shelf-view .record-card{min-width:0}
+  #shelf.shelf-view .record-name{font-size:11px;line-height:1.35}
+  #shelf.shelf-view .record-meta{font-size:9px}
+  #shelf.pile-view{height:clamp(390px,118vw,520px);min-height:390px;margin:4px 0 22px;touch-action:pan-y}
+  #shelf.pile-view .record-card{width:clamp(48px,12vw,68px)}
+  #shelf.pile-view:after{font-size:7px;letter-spacing:.14em;bottom:14px}
+  .pile-hover-label{margin:0 0 18px}
+  .catalog-search{grid-template-columns:22px minmax(0,1fr);gap:8px;margin:0 0 22px;padding-bottom:10px}
+  .catalog-search input{font-size:16px;min-height:38px}
+  .catalog-search input::placeholder{font-size:12px}
+  .catalog-search button{grid-column:2;min-height:38px;padding:0 14px}
+  .search-results,.queue-panel{margin:26px 0 34px;padding:22px 0}
+  .subsection-head h3{font-size:26px}
+  .search-row{grid-template-columns:38px minmax(0,1fr);gap:10px;padding:12px 4px}
+  .search-row .queue-cover{width:38px;height:38px}
+  .search-row .queue-copy strong{font-size:11px}
+  .search-actions{grid-column:2;display:flex;gap:8px}
+  .search-actions button{min-height:36px;padding:0 12px}
+  .queue-row{grid-template-columns:22px 38px minmax(0,1fr);gap:9px;padding:11px 4px}
+  .queue-row .queue-cover{width:38px;height:38px}
+  .queue-row .queue-copy strong{font-size:11px}
+  .queue-tag{display:none}
+  .booth{margin:34px 0 22px;padding:22px 16px 20px}
+  .booth-heading{gap:10px}
+  .booth-heading h2{font-size:clamp(28px,8vw,38px);overflow-wrap:anywhere}
+  .booth-heading p:not(.eyebrow){font-size:10px}
+  .booth-status{display:none}
+  .booth-stage{display:grid;grid-template-columns:1fr;justify-items:center;gap:22px;min-height:0;padding:24px 0}
+  .record-stack{width:112px;max-width:38vw}
+  .turntable{width:min(100%,340px);max-width:100%;aspect-ratio:1.25}
+  .platter{width:76%;height:auto;aspect-ratio:1;left:6%;top:7%}
+  .tonearm{right:6%;top:8%;height:75%}
+  .booth-actions{justify-content:center;flex-wrap:wrap}
+  #return-record{width:100%;max-width:320px;min-width:0;min-height:44px}
+  .booth-footnote{font-size:7px;line-height:1.6;letter-spacing:.13em}
+  .collection{margin-top:34px;padding-top:22px}
+  .collection .section-head{margin:18px 0}
+  .track-row{grid-template-columns:24px 40px minmax(0,1fr) auto;gap:9px;padding:11px 5px}
+  .track-cover{width:40px;height:40px}
+  .track-copy strong{font-size:11px}
+  .track-copy small{font-size:9px}
+  .track-play{font-size:7px;letter-spacing:.1em}
+  footer{gap:8px;flex-wrap:wrap;padding:24px 0 12px;font-size:7px}
+  .player{
+    position:fixed;left:0;right:0;bottom:0;z-index:80;
+    display:grid;grid-template-columns:minmax(0,1fr) auto;
+    grid-template-rows:auto 18px;gap:7px 10px;
+    width:100%;min-height:0;padding:9px 14px calc(8px + env(safe-area-inset-bottom));
+    background:rgba(24,24,23,.97);backdrop-filter:blur(22px);
+    border-top:1px solid rgba(247,243,233,.16);
+  }
+  .now-playing{grid-column:1;grid-row:1;min-width:0;display:flex;align-items:center;gap:9px}
+  .now-playing img{width:38px;height:38px}
+  .now-copy{min-width:0}
+  .now-copy strong{display:block;max-width:42vw;font-size:10px}
+  .now-copy small{display:block;max-width:42vw;font-size:9px}
+  .controls{grid-column:2;grid-row:1;display:flex;align-items:center;gap:2px}
+  .controls button{width:28px;height:34px;font-size:18px}
+  .controls .play{width:36px;height:36px;font-size:13px}
+  .controls .utility-control{width:23px;height:32px;font-size:15px}
+  .fullscreen-control{width:22px;height:28px;font-size:15px}
+  .volume{display:none}
+  .player-progress{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:30px minmax(0,1fr) 30px;gap:7px;max-width:none;width:100%;font-size:8px}
+  .player-progress input{min-height:16px}
+  html:fullscreen main{padding:0 14px calc(142px + env(safe-area-inset-bottom))}
+  html:fullscreen #booth{min-height:calc(100dvh - 142px);padding:24px 14px 10px}
+  html:fullscreen #booth .booth-stage{grid-template-columns:1fr;gap:20px;margin:18px auto}
+  html:fullscreen #booth .record-stack{width:104px}
+  html:fullscreen #booth .turntable{width:min(100%,330px)}
+  html:fullscreen .player{z-index:90}
+}
+@media(max-width:390px){
+  :root{--mobile-gutter:14px}
+  .top-note{display:none}
+  .hero{padding-top:38px}
+  #shelf.shelf-view{gap:20px 11px}
+  .controls{gap:0}
+  .controls button{width:25px}
+  .controls .utility-control{width:20px;font-size:14px}
+  .controls .play{width:33px;height:33px}
+  .fullscreen-control{width:19px}
+  .now-playing img{width:34px;height:34px}
+  .now-copy strong,.now-copy small{max-width:35vw}
+  .player{padding-left:10px;padding-right:10px}
+}
+@media(hover:none) and (pointer:coarse){
+  .record-card:hover .sleeve{transform:none}
+  .catalog-search button,.search-actions button,.view-tab,.track-row,.controls button{touch-action:manipulation}
+  .record-card:focus-visible,.track-row:focus-visible{outline-offset:2px}
+}

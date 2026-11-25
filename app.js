@@ -263,7 +263,7 @@ async function connectPlayer() {
     $("#now-title").textContent = track.name;
     $("#now-artist").textContent = track.artists.map((artist) => artist.name).join(", ");
     $("#now-cover").src = track.album.images?.[0]?.url || "./assets/studio-gh-mark.svg";
-    $("#play-toggle").textContent = playback.paused ? "PLAY" : "PAUSE";
+    $("#play-toggle").textContent = playback.paused ? "▶" : "Ⅱ";
   });
   player.addListener("initialization_error", ({ message }) => setStatus(message, "error"));
   player.addListener("authentication_error", ({ message }) => setStatus(message, "error"));

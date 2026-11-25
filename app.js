@@ -20,7 +20,7 @@ const STORAGE = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false };
+const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false, playlistRequestId: 0 };
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -219,6 +219,9 @@ function renderPlaylists() {
   state.playlists.forEach((playlist, index) => {
     const card = document.createElement("button");
     card.className = "record-card";
+    card.dataset.playlistId = playlist.id;
+    card.dataset.name = playlist.name;
+    card.setAttribute("aria-pressed", String(state.currentPlaylist?.id === playlist.id));
     card.style.setProperty("--tilt", `${(index % 5 - 2) * 1.4}deg`);
     card.style.setProperty("--i", index);
     card.innerHTML = `
@@ -234,7 +237,13 @@ function renderPlaylists() {
   });
 }
 async function openPlaylist(playlist) {
+  const requestId = ++state.playlistRequestId;
   state.currentPlaylist = playlist;
+  document.querySelectorAll(".record-card").forEach((card) => {
+    const active = card.dataset.playlistId === playlist.id;
+    card.classList.toggle("is-selected", active);
+    card.setAttribute("aria-pressed", String(active));
+  });
   // Prime Spotify audio while this playlist click is still a direct user gesture.
   if (state.player) state.player.activateElement().catch(() => {});
   state.recordPlaced = true;
@@ -251,10 +260,13 @@ async function openPlaylist(playlist) {
     let url = `/playlists/${encodeURIComponent(playlist.id)}/items?limit=50&fields=items(item(name,uri,artists(name),album(name,images),duration_ms,type,is_playable)),next,total`;
     while (url) {
       const page = await spotify(url);
-      all.push(...(page.items || []).map((entry) => entry.item).filter((item) => item?.type === "track"));
+      if (requestId !== state.playlistRequestId) return;
+      all.push(...(page.items || []).map((entry) => entry.item).filter((item) => item?.type === "track" && item.is_playable !== false));
       url = page.next ? page.next.replace("https://api.spotify.com/v1", "") : null;
     }
+    if (requestId !== state.playlistRequestId) return;
     state.currentTracks = all;
+    state.currentTrackIndex = all.length ? 0 : -1;
     state.selectedTrack = all[0] || null;
     $("#collection-subtitle").textContent = `${all.length} tracks · selected collection`;
     renderTracks(all);
@@ -266,7 +278,9 @@ async function openPlaylist(playlist) {
     $("#vinyl-label-text").textContent = playlist.name;
     $("#booth").scrollIntoView({ behavior: "smooth", block: "center" });
     if (state.selectedTrack) await playTrack(state.selectedTrack);
+    else $("#booth-caption").textContent = "No playable tracks in this playlist.";
   } catch (error) {
+    if (requestId !== state.playlistRequestId) return;
     $("#collection-subtitle").textContent = error.message;
   }
 }
@@ -464,6 +478,12 @@ async function boot() {
   });
   document.querySelectorAll(".view-tab").forEach((tab) => tab.addEventListener("click", () => setCollectionView(tab.dataset.view)));
   const pile = $("#shelf");
+  pile.addEventListener("pointerover", (event) => {
+    if (state.collectionView !== "pile") return;
+    const card = event.target.closest(".record-card");
+    if (card) $("#pile-hover-label").textContent = card.dataset.name || "Your collection";
+  });
+  pile.addEventListener("pointerleave", () => { $("#pile-hover-label").textContent = "DRAG TO EXPLORE · SELECT A SLEEVE"; });
   pile.addEventListener("pointerdown", (event) => {
     if (state.collectionView !== "pile" || !event.isPrimary || event.button !== 0) return;
     state.pileDrag = {

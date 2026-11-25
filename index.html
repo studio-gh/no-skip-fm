@@ -49,11 +49,11 @@
             <div class="deck-brand">NO.SKIP.FM <span>33⅓ RPM</span></div>
           </div>
         </div>
-        <div class="booth-actions"><button id="drop-record" class="drop-button" disabled>PLACE RECORD</button><button id="play-selected" class="return-button" disabled>PLAY</button><button id="return-record" class="return-button" disabled>RETURN TO SHELF</button></div>
+        <div class="booth-actions"><button id="return-record" class="return-button" disabled>RETURN RECORD TO SHELF ↗</button><span class="booth-action-note">PLAYBACK CONTROLLED BELOW</span></div>
         <p class="booth-footnote">SELECT A RECORD · DROP IT ON THE PLATTER · ENJOY THE SIDE</p>
       </section>
       <section id="collection" class="collection" hidden>
-        <p class="eyebrow">NOW BROWSING</p>
+        <p class="eyebrow">NOW BROWSING · SELECT A TRACK TO PLAY</p>
         <div class="section-head"><div><h2 id="collection-title">Collection</h2><p id="collection-subtitle">Loading…</p></div></div>
         <div id="tracks" class="tracks"></div>
       </section>
@@ -62,7 +62,7 @@
   </main>
   <aside id="player" class="player" hidden>
     <div class="now-playing"><img id="now-cover" src="./assets/studio-gh-mark.svg" alt=""><div class="now-copy"><strong id="now-title">Nothing playing</strong><small id="now-artist">Choose a record</small></div></div>
-    <div class="controls"><button id="previous" class="transport" aria-label="Previous track" title="Previous track">‹</button><button id="play-toggle" class="play" aria-label="Play or pause" title="Play or pause">▶</button><button id="next" class="transport" aria-label="Next track" title="Next track">›</button></div>
+    <div class="controls"><button id="previous" class="transport" aria-label="Previous track" title="Previous track">↶</button><button id="play-toggle" class="play" aria-label="Play or pause" title="Play or pause">▶</button><button id="next" class="transport" aria-label="Next track" title="Next track">↷</button></div>
     <label class="volume">VOL <input id="volume" type="range" min="0" max="100" value="78" aria-label="Volume"></label>
     <div class="player-progress"><span id="elapsed">0:00</span><input id="progress" type="range" min="0" max="1000" value="0" aria-label="Track progress"><span id="duration">0:00</span></div>
     <span id="player-state" hidden>PLAYER OFFLINE</span>

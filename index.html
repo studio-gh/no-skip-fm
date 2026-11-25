@@ -64,6 +64,7 @@
     <div class="now-playing"><img id="now-cover" src="./assets/studio-gh-mark.svg" alt=""><div class="now-copy"><strong id="now-title">Nothing playing</strong><small id="now-artist">Choose a record</small></div></div>
     <div class="controls"><button id="previous" class="transport" aria-label="Previous track" title="Previous track">‹</button><button id="play-toggle" class="play" aria-label="Play or pause" title="Play or pause">▶</button><button id="next" class="transport" aria-label="Next track" title="Next track">›</button></div>
     <label class="volume">VOL <input id="volume" type="range" min="0" max="100" value="78" aria-label="Volume"></label>
+    <div class="player-progress"><span id="elapsed">0:00</span><input id="progress" type="range" min="0" max="1000" value="0" aria-label="Track progress"><span id="duration">0:00</span></div>
     <span id="player-state" hidden>PLAYER OFFLINE</span>
   </aside>
 </body>

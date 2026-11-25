@@ -161,8 +161,19 @@ function setCollectionView(view, updateUrl = true) {
     tab.classList.toggle("active", active);
     tab.setAttribute("aria-pressed", String(active));
   });
-  $("#shelf").classList.toggle("pile-view", state.collectionView === "pile");
-  $("#shelf").classList.toggle("shelf-view", state.collectionView === "shelf");
+  const shelf = $("#shelf");
+  shelf.classList.toggle("pile-view", state.collectionView === "pile");
+  shelf.classList.toggle("shelf-view", state.collectionView === "shelf");
+  if (state.collectionView === "shelf") {
+    // Pile positioning is written inline for smooth dragging. Always clear it
+    // when returning to the grid so the two layouts never contaminate each other.
+    shelf.querySelectorAll(".record-card").forEach((card) => {
+      card.style.removeProperty("transform");
+      card.style.removeProperty("z-index");
+      card.style.removeProperty("opacity");
+      card.style.removeProperty("--orbit-depth");
+    });
+  }
   if (updateUrl) {
     const url = new URL(location.href);
     if (state.collectionView === "pile") url.searchParams.set("view", "pile");

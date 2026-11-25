@@ -20,7 +20,7 @@ const STORAGE = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null };
+const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false };
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -147,11 +147,57 @@ async function loadPlaylists() {
   }
   state.playlists = all;
   renderPlaylists();
+  setCollectionView(state.collectionView, false);
   setStatus(`${all.length} collections ready`, "success");
 }
 function imageFor(item) {
   return item?.images?.[0]?.url || "";
 }
+
+function setCollectionView(view, updateUrl = true) {
+  state.collectionView = view === "pile" ? "pile" : "shelf";
+  document.querySelectorAll(".view-tab").forEach((tab) => {
+    const active = tab.dataset.view === state.collectionView;
+    tab.classList.toggle("active", active);
+    tab.setAttribute("aria-pressed", String(active));
+  });
+  $("#shelf").classList.toggle("pile-view", state.collectionView === "pile");
+  $("#shelf").classList.toggle("shelf-view", state.collectionView === "shelf");
+  if (updateUrl) {
+    const url = new URL(location.href);
+    if (state.collectionView === "pile") url.searchParams.set("view", "pile");
+    else url.searchParams.delete("view");
+    history.replaceState({}, "", url);
+  }
+  if (state.collectionView === "pile") renderPileOrbit();
+}
+function renderPileOrbit() {
+  if (state.collectionView !== "pile") return;
+  const stage = $("#shelf");
+  const cards = [...stage.querySelectorAll(".record-card")];
+  if (!cards.length) return;
+  const width = stage.clientWidth;
+  const height = stage.clientHeight;
+  const rx = Math.max(120, width * 0.435);
+  const ry = Math.max(145, height * 0.405);
+  const count = cards.length;
+  cards.forEach((card, index) => {
+    const angle = ((index / count) * Math.PI * 2) + (state.pileRotation * Math.PI / 180) - Math.PI / 2;
+    const x = Math.cos(angle) * rx;
+    const y = Math.sin(angle) * ry;
+    let rotation = (angle * 180 / Math.PI) + 90;
+    while (rotation > 90) rotation -= 180;
+    while (rotation < -90) rotation += 180;
+    const depth = (Math.sin(angle) + 1) / 2;
+    const scale = 0.72 + depth * 0.31;
+    card.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) rotate(${rotation}deg) scale(${scale})`;
+    card.style.zIndex = String(Math.round(depth * 100));
+    card.style.opacity = String(0.68 + depth * 0.32);
+    card.style.setProperty("--orbit-depth", depth.toFixed(3));
+    card.setAttribute("aria-label", `Open playlist: ${card.querySelector(".record-name")?.textContent || "playlist"}`);
+  });
+}
+
 function renderPlaylists() {
   const shelf = $("#shelf");
   shelf.innerHTML = "";
@@ -169,7 +215,10 @@ function renderPlaylists() {
       <span class="record-name"></span>
       <span class="record-meta">${playlist.items?.total ?? playlist.tracks?.total ?? "—"} tracks</span>`;
     card.querySelector(".record-name").textContent = playlist.name;
-    card.addEventListener("click", () => openPlaylist(playlist));
+    card.addEventListener("click", (event) => {
+      if (state.ignorePileClick) { event.preventDefault(); state.ignorePileClick = false; return; }
+      openPlaylist(playlist);
+    });
     shelf.append(card);
   });
 }
@@ -337,10 +386,46 @@ async function boot() {
     $("#play-selected").disabled = true;
     $("#booth-caption").textContent = "Record returned to its sleeve.";
   });
-  document.querySelectorAll(".view-tab").forEach((tab) => tab.addEventListener("click", () => {
-    document.querySelectorAll(".view-tab").forEach((item) => item.classList.toggle("active", item === tab));
-    $("#shelf").classList.toggle("pile-view", tab.dataset.view === "pile");
-  }));
+  document.querySelectorAll(".view-tab").forEach((tab) => tab.addEventListener("click", () => setCollectionView(tab.dataset.view)));
+  const pile = $("#shelf");
+  pile.addEventListener("pointerdown", (event) => {
+    if (state.collectionView !== "pile" || !event.isPrimary) return;
+    state.pileDrag = { x: event.clientX, rotation: state.pileRotation };
+    state.pileMoved = false;
+    pile.setPointerCapture(event.pointerId);
+  });
+  pile.addEventListener("pointermove", (event) => {
+    if (!state.pileDrag) return;
+    const dx = event.clientX - state.pileDrag.x;
+    if (Math.abs(dx) > 5) state.pileMoved = true;
+    state.pileRotation = state.pileDrag.rotation + dx * 0.22;
+    renderPileOrbit();
+  });
+  const finishPileDrag = () => {
+    if (!state.pileDrag) return;
+    if (state.pileMoved) {
+      state.ignorePileClick = true;
+      window.setTimeout(() => { state.ignorePileClick = false; }, 80);
+    }
+    state.pileDrag = null;
+  };
+  pile.addEventListener("pointerup", finishPileDrag);
+  pile.addEventListener("pointercancel", finishPileDrag);
+  pile.addEventListener("wheel", (event) => {
+    if (state.collectionView !== "pile") return;
+    event.preventDefault();
+    state.pileRotation += (Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY) * 0.12;
+    renderPileOrbit();
+  }, { passive: false });
+  window.addEventListener("resize", () => { if (state.collectionView === "pile") renderPileOrbit(); });
+  pile.addEventListener("keydown", (event) => {
+    if (state.collectionView !== "pile") return;
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+      event.preventDefault();
+      state.pileRotation += event.key === "ArrowRight" ? -18 : 18;
+      renderPileOrbit();
+    }
+  });
   $("#previous").addEventListener("click", () => state.player?.previousTrack());
   $("#next").addEventListener("click", () => state.player?.nextTrack());
   $("#volume").addEventListener("input", (event) => state.player?.setVolume(Number(event.target.value) / 100));

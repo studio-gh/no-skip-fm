@@ -20,7 +20,7 @@ const STORAGE = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const state = { playlists: [], currentPlaylist: null, player: null, deviceId: null, currentTrack: null };
+const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null };
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -163,6 +163,7 @@ function renderPlaylists() {
     const card = document.createElement("button");
     card.className = "record-card";
     card.style.setProperty("--tilt", `${(index % 5 - 2) * 1.4}deg`);
+    card.style.setProperty("--i", index);
     card.innerHTML = `
       <span class="sleeve"><img src="${imageFor(playlist) || "./assets/studio-gh-mark.svg"}" alt="" loading="lazy"><span class="disc"></span></span>
       <span class="record-name"></span>
@@ -187,8 +188,17 @@ async function openPlaylist(playlist) {
       all.push(...(page.items || []).map((entry) => entry.item).filter((item) => item?.type === "track"));
       url = page.next ? page.next.replace("https://api.spotify.com/v1", "") : null;
     }
+    state.currentTracks = all;
+    state.selectedTrack = all[0] || null;
     $("#collection-subtitle").textContent = `${all.length} tracks · selected collection`;
     renderTracks(all);
+    $("#booth").hidden = false;
+    $("#booth-title").textContent = playlist.name;
+    $("#booth-caption").textContent = `${all.length} tracks in this collection`;
+    $("#booth-cover").src = imageFor(playlist) || "./assets/studio-gh-mark.svg";
+    $("#vinyl-label").src = imageFor(playlist) || "./assets/studio-gh-mark.svg";
+    $("#vinyl-label-text").textContent = playlist.name;
+    $("#booth").scrollIntoView({ behavior: "smooth", block: "center" });
   } catch (error) {
     $("#collection-subtitle").textContent = error.message;
   }
@@ -207,7 +217,14 @@ function renderTracks(tracks) {
       <span class="track-play">PLAY ↗</span>`;
     row.querySelector("strong").textContent = track.name;
     row.querySelector("small").textContent = (track.artists || []).map((artist) => artist.name).join(", ");
-    row.addEventListener("click", () => playTrack(track));
+    row.addEventListener("click", () => {
+      state.selectedTrack = track;
+      $("#booth-caption").textContent = `Selected: ${track.name} · pull the record and drop the needle.`;
+      $("#now-title").textContent = track.name;
+      $("#now-artist").textContent = (track.artists || []).map((artist) => artist.name).join(", ");
+      $("#now-cover").src = cover || "./assets/studio-gh-mark.svg";
+      if (state.recordPlaced) playTrack(track);
+    });
     list.append(row);
   });
 }
@@ -293,6 +310,34 @@ async function boot() {
     setStatus("Spotify disconnected");
   });
   $("#play-toggle").addEventListener("click", togglePlayback);
+  $("#pull-record").addEventListener("click", () => {
+    if (state.recordPlaced) return;
+    state.recordPlaced = true;
+    $("#turntable").classList.add("record-placed");
+    $("#record-stack").classList.add("record-pulled");
+    $("#drop-record").disabled = false;
+    $("#return-record").disabled = false;
+    $("#booth-caption").textContent = "Record on the platter. Ready when you are.";
+  });
+  $("#drop-record").addEventListener("click", async () => {
+    if (!state.recordPlaced || !state.selectedTrack) return;
+    $("#turntable").classList.add("needle-down");
+    $("#booth-caption").textContent = "Needle down. Side one.";
+    await playTrack(state.selectedTrack);
+  });
+  $("#return-record").addEventListener("click", () => {
+    state.recordPlaced = false;
+    $("#turntable").classList.remove("record-placed", "needle-down");
+    $("#record-stack").classList.remove("record-pulled");
+    $("#drop-record").disabled = true;
+    $("#return-record").disabled = true;
+    $("#booth-caption").textContent = "Record returned to its sleeve.";
+    state.player?.pause();
+  });
+  document.querySelectorAll(".view-tab").forEach((tab) => tab.addEventListener("click", () => {
+    document.querySelectorAll(".view-tab").forEach((item) => item.classList.toggle("active", item === tab));
+    $("#shelf").classList.toggle("pile-view", tab.dataset.view === "pile");
+  }));
   $("#previous").addEventListener("click", () => state.player?.previousTrack());
   $("#next").addEventListener("click", () => state.player?.nextTrack());
   $("#volume").addEventListener("input", (event) => state.player?.setVolume(Number(event.target.value) / 100));

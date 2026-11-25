@@ -20,7 +20,7 @@ const STORAGE = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false };
+const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0 };
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -235,6 +235,14 @@ function renderPlaylists() {
 }
 async function openPlaylist(playlist) {
   state.currentPlaylist = playlist;
+  // Prime Spotify audio while this playlist click is still a direct user gesture.
+  if (state.player) state.player.activateElement().catch(() => {});
+  state.recordPlaced = true;
+  $("#turntable").classList.add("record-placed");
+  $("#record-stack").classList.add("record-pulled");
+  $("#drop-record").disabled = false;
+  $("#return-record").disabled = false;
+  $("#play-selected").disabled = false;
   $("#collection-title").textContent = playlist.name;
   $("#collection-subtitle").textContent = "Loading the grooves…";
   $("#tracks").innerHTML = "";
@@ -259,6 +267,7 @@ async function openPlaylist(playlist) {
     $("#vinyl-label").src = imageFor(playlist) || "./assets/studio-gh-mark.svg";
     $("#vinyl-label-text").textContent = playlist.name;
     $("#booth").scrollIntoView({ behavior: "smooth", block: "center" });
+    if (state.selectedTrack) await playTrack(state.selectedTrack);
   } catch (error) {
     $("#collection-subtitle").textContent = error.message;
   }
@@ -279,15 +288,36 @@ function renderTracks(tracks) {
     row.querySelector("small").textContent = (track.artists || []).map((artist) => artist.name).join(", ");
     row.addEventListener("click", () => {
       state.selectedTrack = track;
-      $("#booth-caption").textContent = `Selected: ${track.name} · pull the record and drop the needle.`;
+      state.recordPlaced = true;
+      $("#turntable").classList.add("record-placed", "needle-down");
+      $("#record-stack").classList.add("record-pulled");
+      $("#drop-record").disabled = false;
+      $("#return-record").disabled = false;
+      $("#play-selected").disabled = false;
+      $("#booth-caption").textContent = `Now playing · ${track.name}`;
       $("#now-title").textContent = track.name;
       $("#now-artist").textContent = (track.artists || []).map((artist) => artist.name).join(", ");
       $("#now-cover").src = cover || "./assets/studio-gh-mark.svg";
-      if (state.recordPlaced) playTrack(track);
+      playTrack(track);
     });
     list.append(row);
   });
 }
+
+function formatTime(ms) {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+function updateProgressUI() {
+  const progress = $("#progress");
+  if (!progress) return;
+  const duration = state.playbackDuration || 0;
+  const position = Math.min(state.playbackPosition || 0, duration);
+  progress.value = duration ? String(Math.round(position / duration * 1000)) : "0";
+  $("#elapsed").textContent = formatTime(position);
+  $("#duration").textContent = formatTime(duration);
+}
+
 function loadPlaybackSdk() {
   if (window.Spotify) return Promise.resolve();
   return new Promise((resolve) => {
@@ -300,6 +330,7 @@ function loadPlaybackSdk() {
 }
 async function connectPlayer() {
   await loadPlaybackSdk();
+  state.playerReady = new Promise((resolve) => { state.resolvePlayerReady = resolve; });
   const player = new Spotify.Player({
     name: "No.Skip.FM",
     volume: 0.78,
@@ -310,6 +341,8 @@ async function connectPlayer() {
   });
   player.addListener("ready", ({ device_id }) => {
     state.deviceId = device_id;
+    state.resolvePlayerReady?.(device_id);
+    state.resolvePlayerReady = null;
     $("#player-state").textContent = "PLAYER READY";
     setStatus("Turntable connected", "success");
   });
@@ -320,6 +353,9 @@ async function connectPlayer() {
   player.addListener("player_state_changed", (playback) => {
     if (!playback) return;
     const track = playback.track_window.current_track;
+    state.playbackDuration = playback.duration || 0;
+    state.playbackPosition = playback.position || 0;
+    updateProgressUI();
     $("#now-title").textContent = track.name;
     $("#now-artist").textContent = track.artists.map((artist) => artist.name).join(", ");
     $("#now-cover").src = track.album.images?.[0]?.url || "./assets/studio-gh-mark.svg";
@@ -329,12 +365,17 @@ async function connectPlayer() {
   player.addListener("authentication_error", ({ message }) => setStatus(message, "error"));
   player.addListener("account_error", ({ message }) => setStatus(message, "error"));
   player.addListener("playback_error", ({ message }) => setStatus(message, "error"));
+  player.addListener("autoplay_failed", () => setStatus("Tap Play to start audio in this browser.", "error"));
   state.player = player;
   await player.connect();
 }
 async function playTrack(track) {
   try {
-    if (!state.deviceId) throw new Error("The browser turntable is still connecting. Try again in a moment.");
+    if (!state.player) throw new Error("Spotify player is not connected yet.");
+    if (!state.deviceId && state.playerReady) {
+      await Promise.race([state.playerReady, new Promise((_, reject) => setTimeout(() => reject(new Error("The Spotify player is still connecting. Try again in a moment.")), 12000))]);
+    }
+    if (!state.deviceId) throw new Error("The Spotify player is offline. Reconnect Spotify and try again.");
     await state.player.activateElement();
     await spotify(`/me/player/play?device_id=${encodeURIComponent(state.deviceId)}`, {
       method: "PUT",
@@ -370,6 +411,12 @@ async function boot() {
     setStatus("Spotify disconnected");
   });
   $("#play-toggle").addEventListener("click", togglePlayback);
+  $("#progress").addEventListener("change", async (event) => {
+    if (!state.player || !state.playbackDuration) return;
+    const target = Math.round((Number(event.target.value) / 1000) * state.playbackDuration);
+    try { await state.player.seek(target); state.playbackPosition = target; updateProgressUI(); }
+    catch (error) { setStatus(error.message, "error"); }
+  });
   $("#pull-record").addEventListener("click", () => {
     if (state.recordPlaced) return;
     state.recordPlaced = true;
@@ -401,22 +448,25 @@ async function boot() {
   const pile = $("#shelf");
   pile.addEventListener("pointerdown", (event) => {
     if (state.collectionView !== "pile" || !event.isPrimary) return;
-    state.pileDrag = { x: event.clientX, rotation: state.pileRotation };
+    state.pileDrag = { x: event.clientX, y: event.clientY, rotation: state.pileRotation, pointerId: event.pointerId };
     state.pileMoved = false;
-    pile.setPointerCapture(event.pointerId);
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch (_) {}
   });
   pile.addEventListener("pointermove", (event) => {
     if (!state.pileDrag) return;
     const dx = event.clientX - state.pileDrag.x;
-    if (Math.abs(dx) > 5) state.pileMoved = true;
-    state.pileRotation = state.pileDrag.rotation + dx * 0.22;
-    renderPileOrbit();
+    const dy = event.clientY - state.pileDrag.y;
+    if (Math.hypot(dx, dy) > 7) state.pileMoved = true;
+    if (state.pileMoved) {
+      state.pileRotation = state.pileDrag.rotation + dx * 0.48;
+      renderPileOrbit();
+    }
   });
   const finishPileDrag = () => {
     if (!state.pileDrag) return;
     if (state.pileMoved) {
       state.ignorePileClick = true;
-      window.setTimeout(() => { state.ignorePileClick = false; }, 80);
+      window.setTimeout(() => { state.ignorePileClick = false; }, 350);
     }
     state.pileDrag = null;
   };

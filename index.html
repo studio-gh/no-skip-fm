@@ -33,7 +33,25 @@
         <div><p class="eyebrow">YOUR COLLECTION</p><h2>Pick a sleeve.</h2></div>
         <p>YOUR PLAYLISTS · YOUR RECORDS</p>
       </div>
+      
+      <div class="browse-switch" role="group" aria-label="Collection view">
+        <button class="view-tab active" data-view="shelf">SHELF</button>
+        <button class="view-tab" data-view="pile">PILE</button>
+      </div>
       <div id="shelf" class="shelf"></div>
+      <section id="booth" class="booth" hidden>
+        <div class="booth-heading"><div><p class="eyebrow">LISTENING BOOTH 01</p><h2 id="booth-title">Choose a record</h2><p id="booth-caption">Pull a sleeve from your collection.</p></div><span class="booth-status">STUDIO GH · NO.SKIP.FM</span></div>
+        <div class="booth-stage">
+          <div class="record-stack" id="record-stack"><div class="stack-sleeve stack-back"></div><div class="stack-sleeve stack-mid"></div><button class="stack-sleeve stack-front" id="pull-record" aria-label="Pull record from sleeve"><img id="booth-cover" src="./assets/studio-gh-mark.svg" alt="Selected playlist cover"><span class="pull-hint">PULL RECORD ↗</span></button></div>
+          <div class="turntable" id="turntable">
+            <div class="platter"><div class="platter-rim"></div><div class="vinyl" id="vinyl"><div class="grooves"></div><div class="label"><img id="vinyl-label" src="./assets/studio-gh-mark.svg" alt=""><span id="vinyl-label-text">NO.SKIP.FM</span></div></div><div class="spindle"></div></div>
+            <div class="tonearm" id="tonearm"><div class="arm-base"></div><div class="arm-shaft"></div><div class="arm-head"></div></div>
+            <div class="deck-brand">NO.SKIP.FM <span>33⅓ RPM</span></div>
+          </div>
+        </div>
+        <div class="booth-actions"><button id="drop-record" class="drop-button" disabled>DROP THE NEEDLE ↓</button><button id="return-record" class="return-button" disabled>RETURN RECORD ↗</button></div>
+        <p class="booth-footnote">SELECT A RECORD · DROP IT ON THE PLATTER · ENJOY THE SIDE</p>
+      </section>
       <section id="collection" class="collection" hidden>
         <p class="eyebrow">NOW BROWSING</p>
         <div class="section-head"><div><h2 id="collection-title">Collection</h2><p id="collection-subtitle">Loading…</p></div></div>

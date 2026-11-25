@@ -20,7 +20,7 @@ const STORAGE = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false, playlistRequestId: 0, isSeeking: false, shuffle: false, repeatMode: "off", fullscreen: false };
+const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false, playlistRequestId: 0, isSeeking: false, shuffle: false, repeatMode: "off", fullscreen: false, queue: [], searchRequestId: 0 };
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -153,6 +153,22 @@ async function loadPlaylists() {
 function imageFor(item) {
   return item?.images?.[0]?.url || "";
 }
+function trackArtists(track) { return (track?.artists || []).map((artist) => artist.name).join(", "); }
+function renderQueue() {
+  const list = $("#queue-list"); if (!list) return; list.innerHTML = ""; $("#queue-count").textContent = `${state.queue.length} UP NEXT`;
+  if (!state.queue.length) { list.innerHTML = '<p class="queue-empty">Nothing waiting in the wings. Search for a track and add it to the queue.</p>'; return; }
+  state.queue.forEach((track, index) => { const row = document.createElement("div"); row.className = "queue-row"; row.innerHTML = '<span class="queue-number"></span><img class="queue-cover" alt=""><span class="queue-copy"><strong></strong><small></small></span><span class="queue-tag">UP NEXT</span>'; row.querySelector(".queue-number").textContent = String(index + 1).padStart(2, "0"); row.querySelector(".queue-cover").src = imageFor(track.album) || "./assets/studio-gh-mark.svg"; row.querySelector("strong").textContent = track.name || "Unknown track"; row.querySelector("small").textContent = trackArtists(track); list.append(row); });
+}
+async function refreshQueue() { try { const data = await spotify("/me/player/queue"); state.queue = (data.queue || []).filter((track) => track?.type === "track"); renderQueue(); } catch { const list = $("#queue-list"); if (list) list.innerHTML = '<p class="queue-empty">Queue unavailable right now. Start playback to see what is coming next.</p>'; } }
+function renderSearchResults(tracks) {
+  const panel = $("#search-results"), list = $("#search-list"); panel.hidden = false; list.innerHTML = "";
+  if (!tracks.length) { list.innerHTML = '<p class="queue-empty">No playable tracks found. Try another title or artist.</p>'; return; }
+  tracks.forEach((track) => { const row = document.createElement("div"); row.className = "search-row"; row.innerHTML = '<img class="queue-cover" alt=""><span class="queue-copy"><strong></strong><small></small></span><div class="search-actions"><button class="search-play">PLAY</button><button class="search-add">+ QUEUE</button></div>'; row.querySelector("img").src = imageFor(track.album) || "./assets/studio-gh-mark.svg"; row.querySelector("strong").textContent = track.name; row.querySelector("small").textContent = trackArtists(track);
+    row.querySelector(".search-play").addEventListener("click", async () => { state.selectedTrack = track; await playTrack(track); $("#booth-caption").textContent = `Now playing · ${track.name}`; });
+    row.querySelector(".search-add").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await spotify(`/me/player/queue?uri=${encodeURIComponent(track.uri)}&device_id=${encodeURIComponent(state.deviceId || "")}`, { method: "POST" }); button.textContent = "ADDED"; await refreshQueue(); } catch (error) { button.disabled = false; setStatus(error.message, "error"); } }); list.append(row);
+  });
+}
+async function searchCatalog(query) { const requestId = ++state.searchRequestId; $("#search-results").hidden = false; $("#search-list").innerHTML = '<p class="queue-empty">Searching the record shop…</p>'; try { const data = await spotify(`/search?q=${encodeURIComponent(query)}&type=track&limit=20&market=from_token`); if (requestId !== state.searchRequestId) return; renderSearchResults((data.tracks?.items || []).filter((track) => track.is_playable !== false)); } catch (error) { if (requestId !== state.searchRequestId) return; $("#search-list").textContent = error.message; } }
 
 function setCollectionView(view, updateUrl = true) {
   state.collectionView = view === "pile" ? "pile" : "shelf";
@@ -382,6 +398,7 @@ async function connectPlayer() {
     state.playbackPaused = playback.paused;
     if (typeof playback.shuffle === "boolean") setShuffleUI(playback.shuffle);
     if (typeof playback.repeat_mode === "string") setRepeatUI(playback.repeat_mode);
+    refreshQueue();
     state.currentTrackIndex = state.currentTracks.findIndex((item) => item.uri === track.uri);
     state.selectedTrack = state.currentTracks[state.currentTrackIndex] || state.selectedTrack;
     $("#turntable").classList.toggle("is-playing", !playback.paused);
@@ -417,6 +434,7 @@ async function playTrack(track) {
     $("#turntable").classList.add("record-placed", "needle-down", "is-playing");
     $("#play-toggle").textContent = "Ⅱ";
     markActiveTrack(track.uri);
+    refreshQueue();
     setStatus("Needle down. Enjoy the record.", "success");
   } catch (error) { setStatus(error.message, "error"); }
 }
@@ -504,6 +522,7 @@ async function boot() {
     $("#player").hidden = true;
     setStatus("Spotify disconnected");
   });
+  $("#search-form").addEventListener("submit", (event) => { event.preventDefault(); const query = $("#catalog-search").value.trim(); if (query) searchCatalog(query); });
   $("#play-toggle").addEventListener("click", togglePlayback);
   $("#shuffle-toggle").addEventListener("click", toggleShuffle);
   $("#repeat-toggle").addEventListener("click", cycleRepeat);
@@ -620,6 +639,7 @@ async function boot() {
       await getAccessToken();
       showConnected();
       await Promise.all([loadPlaylists(), connectPlayer()]);
+      refreshQueue();
     } catch (error) {
       setStatus(error.message, "error");
     }

@@ -469,7 +469,7 @@ async function cycleRepeat() {
 async function toggleListeningMode() {
   try {
     if (document.fullscreenElement) await document.exitFullscreen();
-    else await $("#booth").requestFullscreen();
+    else await document.documentElement.requestFullscreen();
   } catch (error) {
     // Fullscreen may be unavailable in some embedded/mobile browsers.
     document.body.classList.toggle("listening-mode");

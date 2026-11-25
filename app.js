@@ -317,13 +317,16 @@ async function boot() {
     $("#record-stack").classList.add("record-pulled");
     $("#drop-record").disabled = false;
     $("#return-record").disabled = false;
+    $("#play-selected").disabled = false;
     $("#booth-caption").textContent = "Record on the platter. Ready when you are.";
   });
   $("#drop-record").addEventListener("click", async () => {
     if (!state.recordPlaced || !state.selectedTrack) return;
     $("#turntable").classList.add("needle-down");
-    $("#booth-caption").textContent = "Needle down. Side one.";
-    await playTrack(state.selectedTrack);
+    $("#booth-caption").textContent = "The record is set. Use Play when you are ready to listen.";
+  });
+  $("#play-selected").addEventListener("click", () => {
+    if (state.recordPlaced && state.selectedTrack) playTrack(state.selectedTrack);
   });
   $("#return-record").addEventListener("click", () => {
     state.recordPlaced = false;
@@ -331,8 +334,8 @@ async function boot() {
     $("#record-stack").classList.remove("record-pulled");
     $("#drop-record").disabled = true;
     $("#return-record").disabled = true;
+    $("#play-selected").disabled = true;
     $("#booth-caption").textContent = "Record returned to its sleeve.";
-    state.player?.pause();
   });
   document.querySelectorAll(".view-tab").forEach((tab) => tab.addEventListener("click", () => {
     document.querySelectorAll(".view-tab").forEach((item) => item.classList.toggle("active", item === tab));

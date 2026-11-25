@@ -240,9 +240,7 @@ async function openPlaylist(playlist) {
   state.recordPlaced = true;
   $("#turntable").classList.add("record-placed");
   $("#record-stack").classList.add("record-pulled");
-  $("#drop-record").disabled = false;
   $("#return-record").disabled = false;
-  $("#play-selected").disabled = false;
   $("#collection-title").textContent = playlist.name;
   $("#collection-subtitle").textContent = "Loading the grooves…";
   $("#tracks").innerHTML = "";
@@ -293,9 +291,7 @@ function renderTracks(tracks) {
       state.recordPlaced = true;
       $("#turntable").classList.add("record-placed", "needle-down");
       $("#record-stack").classList.add("record-pulled");
-      $("#drop-record").disabled = false;
       $("#return-record").disabled = false;
-      $("#play-selected").disabled = false;
       $("#booth-caption").textContent = `Now playing · ${track.name}`;
       markActiveTrack(track.uri);
       $("#now-title").textContent = track.name;
@@ -459,33 +455,12 @@ async function boot() {
     try { await state.player.seek(target); state.playbackPosition = target; updateProgressUI(); }
     catch (error) { setStatus(error.message, "error"); }
   });
-  $("#pull-record").addEventListener("click", () => {
-    if (state.recordPlaced) return;
-    state.recordPlaced = true;
-    $("#turntable").classList.add("record-placed");
-    $("#record-stack").classList.add("record-pulled");
-    $("#drop-record").disabled = false;
-    $("#return-record").disabled = false;
-    $("#play-selected").disabled = false;
-    $("#booth-caption").textContent = "Record on the platter. Ready when you are.";
-  });
-  $("#drop-record").addEventListener("click", async () => {
-    if (!state.recordPlaced || !state.selectedTrack) return;
-    $("#turntable").classList.add("needle-down");
-    $("#booth-caption").textContent = "The record is set. Use Play when you are ready to listen.";
-  });
-  $("#play-selected").addEventListener("click", () => {
-    if (state.recordPlaced && state.selectedTrack) playTrack(state.selectedTrack);
-  });
   $("#return-record").addEventListener("click", () => {
     state.recordPlaced = false;
-    $("#turntable").classList.remove("record-placed", "needle-down");
-    $("#record-stack").classList.remove("record-pulled");
-    $("#drop-record").disabled = true;
-    $("#return-record").disabled = true;
-    $("#play-selected").disabled = true;
-    $("#booth-caption").textContent = "Record returned to its sleeve.";
     $("#turntable").classList.remove("record-placed", "needle-down", "is-playing");
+    $("#record-stack").classList.remove("record-pulled");
+    $("#return-record").disabled = true;
+    $("#booth-caption").textContent = "Record returned to its sleeve. Playback continues in the player below.";
   });
   document.querySelectorAll(".view-tab").forEach((tab) => tab.addEventListener("click", () => setCollectionView(tab.dataset.view)));
   const pile = $("#shelf");

@@ -237,3 +237,20 @@ footer{font-size:8px;letter-spacing:.18em;color:#77736a}
 @media(max-width:700px){
   #shelf.shelf-view{grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 18px}
 }
+
+/* Spotify-native listening controls */
+.player{grid-template-rows:auto 16px;row-gap:7px;min-height:76px;padding-top:9px;padding-bottom:8px}
+.player-progress{grid-column:1/-1;display:grid;grid-template-columns:36px minmax(0,1fr) 36px;align-items:center;gap:10px;max-width:720px;width:100%;justify-self:center;color:#8e897f;font-size:9px;font-variant-numeric:tabular-nums}
+.player-progress input{width:100%;height:3px;margin:0;accent-color:var(--accent);cursor:pointer}
+.player-progress input::-webkit-slider-thumb{cursor:grab}
+.track-row{cursor:pointer}
+.track-row:focus-visible,.record-card:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+#shelf.pile-view{touch-action:none}
+#shelf.pile-view .record-card{cursor:pointer}
+#shelf.pile-view .record-card:hover .sleeve{outline:1px solid rgba(255,252,244,.75);outline-offset:3px}
+@media(max-width:700px){
+ .player{grid-template-rows:auto 14px;min-height:78px;padding:8px 14px}
+ .player-progress{grid-column:1/-1;max-width:none}
+ .now-playing img{width:36px;height:36px}
+ .now-copy strong{max-width:42vw}
+}

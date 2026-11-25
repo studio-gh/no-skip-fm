@@ -254,3 +254,36 @@ footer{font-size:8px;letter-spacing:.18em;color:#77736a}
  .now-playing img{width:36px;height:36px}
  .now-copy strong{max-width:42vw}
 }
+
+/* Listening ritual: one coherent selected / playing state */
+.track-row{position:relative;border-radius:2px}
+.track-row.is-playing{background:rgba(243,154,24,.075)}
+.track-row.is-playing .track-index,.track-row.is-playing .track-play{color:var(--accent)}
+.track-row.is-playing .track-copy strong{color:var(--paper)}
+.track-row.is-playing:before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:2px;background:var(--accent)}
+.booth-action-note{color:#77736a;font-size:8px;letter-spacing:.17em}
+.booth-actions{min-height:42px}
+#return-record{min-width:190px}
+.turntable.is-playing .vinyl{animation:record-spin 2.1s linear infinite}
+.turntable.is-playing .tonearm{transform:rotate(13deg) translate(-12px,10px)}
+@keyframes record-spin{to{transform:scale(1) rotate(360deg)}}
+.player-progress input{accent-color:var(--accent)}
+.player-progress input:focus-visible{outline:1px solid var(--accent);outline-offset:4px}
+.controls .transport{font-size:20px}
+.now-playing{max-width:100%;overflow:hidden}
+.now-playing img{flex:0 0 auto}
+.player{z-index:20}
+body{padding-bottom:112px}
+@media(max-width:700px){
+ body{padding-bottom:118px}
+ .player{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 14px;gap:6px 10px}
+ .controls{gap:4px}
+ .controls button{width:30px;height:30px}
+ .controls .play{width:36px;height:36px}
+ .player-progress{grid-column:1/-1}
+ .booth-actions{justify-content:flex-start}
+ .booth-action-note{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .turntable.is-playing .vinyl{animation:none}
+}

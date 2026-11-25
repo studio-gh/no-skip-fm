@@ -20,7 +20,7 @@ const STORAGE = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false, playlistRequestId: 0 };
+const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false, playlistRequestId: 0, isSeeking: false };
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -332,7 +332,7 @@ function formatTime(ms) {
 }
 function updateProgressUI() {
   const progress = $("#progress");
-  if (!progress) return;
+  if (!progress || state.isSeeking) return;
   const duration = state.playbackDuration || 0;
   const livePosition = state.playbackPosition + (!state.playbackPaused ? Date.now() - state.playbackUpdatedAt : 0);
   const position = Math.min(livePosition || 0, duration);
@@ -458,12 +458,15 @@ async function boot() {
     setStatus("Spotify disconnected");
   });
   $("#play-toggle").addEventListener("click", togglePlayback);
+  $("#progress").addEventListener("pointerdown", () => { state.isSeeking = true; });
+  $("#progress").addEventListener("keydown", () => { state.isSeeking = true; });
   $("#progress").addEventListener("input", (event) => {
     if (!state.playbackDuration) return;
     const preview = Math.round((Number(event.target.value) / 1000) * state.playbackDuration);
     $("#elapsed").textContent = formatTime(preview);
   });
   $("#progress").addEventListener("change", async (event) => {
+    state.isSeeking = false;
     if (!state.player || !state.playbackDuration) return;
     const target = Math.round((Number(event.target.value) / 1000) * state.playbackDuration);
     try { await state.player.seek(target); state.playbackPosition = target; updateProgressUI(); }

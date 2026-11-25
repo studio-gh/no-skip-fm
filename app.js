@@ -20,7 +20,7 @@ const STORAGE = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false, playlistRequestId: 0, isSeeking: false };
+const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false, playlistRequestId: 0, isSeeking: false, shuffle: false, repeatMode: "off", fullscreen: false };
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -380,6 +380,8 @@ async function connectPlayer() {
     state.playbackPosition = playback.position || 0;
     state.playbackUpdatedAt = Date.now();
     state.playbackPaused = playback.paused;
+    if (typeof playback.shuffle === "boolean") setShuffleUI(playback.shuffle);
+    if (typeof playback.repeat_mode === "string") setRepeatUI(playback.repeat_mode);
     state.currentTrackIndex = state.currentTracks.findIndex((item) => item.uri === track.uri);
     state.selectedTrack = state.currentTracks[state.currentTrackIndex] || state.selectedTrack;
     $("#turntable").classList.toggle("is-playing", !playback.paused);
@@ -431,6 +433,51 @@ async function stepPlaylistTrack(direction) {
   markActiveTrack(state.selectedTrack.uri);
   await playTrack(state.selectedTrack);
 }
+function setShuffleUI(enabled) {
+  state.shuffle = Boolean(enabled);
+  const button = $("#shuffle-toggle");
+  button.classList.toggle("is-active", state.shuffle);
+  button.setAttribute("aria-pressed", String(state.shuffle));
+  button.setAttribute("aria-label", state.shuffle ? "Shuffle on" : "Shuffle off");
+  button.title = state.shuffle ? "Shuffle: on" : "Shuffle: off";
+}
+function setRepeatUI(mode) {
+  state.repeatMode = ["off", "context", "track"].includes(mode) ? mode : "off";
+  const button = $("#repeat-toggle");
+  button.classList.toggle("is-active", state.repeatMode !== "off");
+  button.classList.toggle("repeat-track", state.repeatMode === "track");
+  button.setAttribute("aria-pressed", String(state.repeatMode !== "off"));
+  const label = state.repeatMode === "track" ? "Repeat track" : state.repeatMode === "context" ? "Repeat playlist" : "Repeat off";
+  button.setAttribute("aria-label", label);
+  button.title = label;
+}
+async function toggleShuffle() {
+  try {
+    const next = !state.shuffle;
+    await spotify(`/me/player/shuffle?state=${next}&device_id=${encodeURIComponent(state.deviceId || "")}`, { method: "PUT" });
+    setShuffleUI(next);
+  } catch (error) { setStatus(error.message, "error"); }
+}
+async function cycleRepeat() {
+  const modes = ["off", "context", "track"];
+  const next = modes[(modes.indexOf(state.repeatMode) + 1) % modes.length];
+  try {
+    await spotify(`/me/player/repeat?state=${next}&device_id=${encodeURIComponent(state.deviceId || "")}`, { method: "PUT" });
+    setRepeatUI(next);
+  } catch (error) { setStatus(error.message, "error"); }
+}
+async function toggleListeningMode() {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await $("#booth").requestFullscreen();
+  } catch (error) {
+    // Fullscreen may be unavailable in some embedded/mobile browsers.
+    document.body.classList.toggle("listening-mode");
+    state.fullscreen = document.body.classList.contains("listening-mode");
+    $("#fullscreen-toggle").textContent = state.fullscreen ? "×" : "⛶";
+    $("#fullscreen-toggle").setAttribute("aria-label", state.fullscreen ? "Exit listening mode" : "Enter listening mode");
+  }
+}
 async function togglePlayback() {
   try {
     if (!state.player) return;
@@ -458,6 +505,15 @@ async function boot() {
     setStatus("Spotify disconnected");
   });
   $("#play-toggle").addEventListener("click", togglePlayback);
+  $("#shuffle-toggle").addEventListener("click", toggleShuffle);
+  $("#repeat-toggle").addEventListener("click", cycleRepeat);
+  $("#fullscreen-toggle").addEventListener("click", toggleListeningMode);
+  document.addEventListener("fullscreenchange", () => {
+    state.fullscreen = Boolean(document.fullscreenElement);
+    document.body.classList.toggle("is-listening", state.fullscreen);
+    $("#fullscreen-toggle").textContent = state.fullscreen ? "×" : "⛶";
+    $("#fullscreen-toggle").setAttribute("aria-label", state.fullscreen ? "Exit listening mode" : "Enter listening mode");
+  });
   $("#progress").addEventListener("pointerdown", () => { state.isSeeking = true; });
   $("#progress").addEventListener("keydown", () => { state.isSeeking = true; });
   $("#progress").addEventListener("input", (event) => {
@@ -535,6 +591,8 @@ async function boot() {
   $("#previous").addEventListener("click", () => stepPlaylistTrack(-1));
   $("#next").addEventListener("click", () => stepPlaylistTrack(1));
   $("#volume").addEventListener("input", (event) => state.player?.setVolume(Number(event.target.value) / 100));
+  setShuffleUI(false);
+  setRepeatUI("off");
 
   window.setInterval(() => { if (!state.playbackPaused) updateProgressUI(); }, 250);
 

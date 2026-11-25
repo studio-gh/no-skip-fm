@@ -357,3 +357,26 @@ body.listening-mode .player{z-index:40}
  #booth:fullscreen .turntable,#booth:-webkit-full-screen .turntable,
  body.listening-mode #booth .turntable{width:min(100%,340px)}
 }
+
+/* Keep the complete listening dock visible in native fullscreen */
+.player{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
+.controls{grid-column:2;grid-row:1}
+.volume{grid-column:3;grid-row:1}
+.fullscreen-control{width:28px;height:28px;font-size:16px;border:0}
+html:fullscreen body{min-height:100vh;overflow:auto}
+html:fullscreen .topbar,html:fullscreen main>.hero,html:fullscreen main>footer{display:none}
+html:fullscreen main{max-width:none;padding:0 5vw 100px}
+html:fullscreen #booth{margin:0;padding:5vh 5vw 2vh;min-height:calc(100vh - 100px);background:radial-gradient(ellipse at 50% 42%,#38372f 0,#242422 55%,#191918 100%);display:flex;flex-direction:column;justify-content:center}
+html:fullscreen #booth .booth-stage{width:min(1100px,100%);margin:3vh auto;min-height:0;flex:1;grid-template-columns:minmax(170px,.7fr) minmax(360px,1.3fr)}
+html:fullscreen #booth .turntable{width:min(100%,620px)}
+html:fullscreen #booth .record-stack{width:min(100%,270px)}
+html:fullscreen .player{z-index:50}
+@media(max-width:700px){
+ .player{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 14px}
+ .controls{grid-column:2;grid-row:1}
+ .volume{display:none}
+ .fullscreen-control{width:24px;height:24px}
+ html:fullscreen #booth .booth-stage{grid-template-columns:1fr;gap:22px}
+ html:fullscreen #booth .record-stack{width:112px}
+ html:fullscreen #booth .turntable{width:min(100%,330px)}
+}

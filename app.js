@@ -450,7 +450,9 @@ async function boot() {
     if (state.collectionView !== "pile" || !event.isPrimary) return;
     state.pileDrag = { x: event.clientX, y: event.clientY, rotation: state.pileRotation, pointerId: event.pointerId };
     state.pileMoved = false;
-    try { event.currentTarget.setPointerCapture(event.pointerId); } catch (_) {}
+    // Capture on the sleeve itself, not the stage: this preserves the sleeve as the click target after a tap.
+    const sleeveCard = event.target.closest(".record-card");
+    try { (sleeveCard || event.currentTarget).setPointerCapture(event.pointerId); } catch (_) {}
   });
   pile.addEventListener("pointermove", (event) => {
     if (!state.pileDrag) return;

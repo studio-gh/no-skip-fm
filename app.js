@@ -20,7 +20,7 @@ const STORAGE = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false, playlistRequestId: 0, isSeeking: false, shuffle: false, repeatMode: "off", fullscreen: false, queue: [], searchRequestId: 0, featuredPlaylist: null, notes: [] };
+const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false, playlistRequestId: 0, isSeeking: false, shuffle: false, repeatMode: "off", fullscreen: false, queue: [], searchRequestId: 0, featuredPlaylist: null, notes: [], recentlyPlayed: [] };
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -170,6 +170,49 @@ function renderSearchResults(tracks) {
 }
 async function searchCatalog(query) { const requestId = ++state.searchRequestId; $("#search-results").hidden = false; $("#search-list").innerHTML = '<p class="queue-empty">Searching the record shop…</p>'; try { const data = await spotify(`/search?q=${encodeURIComponent(query)}&type=track&limit=20&market=from_token`); if (requestId !== state.searchRequestId) return; renderSearchResults((data.tracks?.items || []).filter((track) => track.is_playable !== false)); } catch (error) { if (requestId !== state.searchRequestId) return; $("#search-list").textContent = error.message; } }
 
+
+
+function loadRecentlyPlayed() {
+  try { state.recentlyPlayed = JSON.parse(localStorage.getItem("noskip_recently_played") || "[]"); }
+  catch { state.recentlyPlayed = []; }
+  renderRecentlyPlayed();
+}
+function rememberTrack(track) {
+  if (!track?.uri) return;
+  const item = { uri: track.uri, name: track.name || "Unknown track", artists: track.artists || [], album: track.album || {}, playedAt: Date.now() };
+  state.recentlyPlayed = [item, ...state.recentlyPlayed.filter((entry) => entry.uri !== item.uri)].slice(0, 8);
+  localStorage.setItem("noskip_recently_played", JSON.stringify(state.recentlyPlayed));
+  renderRecentlyPlayed();
+}
+function renderRecentlyPlayed() {
+  const list = $("#recent-list");
+  if (!list) return;
+  list.innerHTML = "";
+  if (!state.recentlyPlayed.length) {
+    list.innerHTML = '<p class="notes-empty">Your listening history will gather here.</p>';
+    return;
+  }
+  state.recentlyPlayed.forEach((track, index) => {
+    const button = document.createElement("button");
+    button.className = "recent-card";
+    const cover = document.createElement("img");
+    cover.src = imageFor(track.album) || "./assets/studio-gh-mark.svg";
+    cover.alt = "";
+    const copy = document.createElement("span");
+    copy.className = "recent-copy";
+    const title = document.createElement("strong");
+    title.textContent = track.name;
+    const artist = document.createElement("small");
+    artist.textContent = trackArtists(track);
+    const number = document.createElement("span");
+    number.className = "recent-number";
+    number.textContent = String(index + 1).padStart(2, "0");
+    copy.append(title, artist);
+    button.append(number, cover, copy);
+    button.addEventListener("click", () => playTrack(track));
+    list.append(button);
+  });
+}
 
 function loadListeningNotes() {
   try { state.notes = JSON.parse(localStorage.getItem("noskip_listening_notes") || "[]"); }
@@ -457,6 +500,7 @@ async function connectPlayer() {
   player.addListener("player_state_changed", (playback) => {
     if (!playback) return;
     const track = playback.track_window.current_track;
+    rememberTrack(track);
     state.playbackDuration = playback.duration || 0;
     state.playbackPosition = playback.position || 0;
     state.playbackUpdatedAt = Date.now();
@@ -594,6 +638,7 @@ async function boot() {
   $("#record-day-open").addEventListener("click", () => { if (state.featuredPlaylist) openPlaylist(state.featuredPlaylist); });
   $("#note-form").addEventListener("submit", saveListeningNote);
   loadListeningNotes();
+  loadRecentlyPlayed();
   setRoomMode(localStorage.getItem("noskip_room_mode") || "default", false);
   document.querySelectorAll(".mode-button").forEach((button) => button.addEventListener("click", () => setRoomMode(button.dataset.mode)));
   $("#player-expand").addEventListener("click", () => {

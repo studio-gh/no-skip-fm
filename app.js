@@ -20,7 +20,7 @@ const STORAGE = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false, playlistRequestId: 0, isSeeking: false, shuffle: false, repeatMode: "off", fullscreen: false, queue: [], searchRequestId: 0 };
+const state = { playlists: [], currentPlaylist: null, currentTracks: [], selectedTrack: null, recordPlaced: false, player: null, deviceId: null, currentTrack: null, collectionView: new URLSearchParams(location.search).get("view") === "pile" ? "pile" : "shelf", pileRotation: 0, pileDrag: null, pileMoved: false, ignorePileClick: false, playerReady: null, resolvePlayerReady: null, playbackDuration: 0, playbackPosition: 0, playbackUpdatedAt: 0, playbackPaused: true, currentTrackIndex: -1, suppressPileClick: false, playlistRequestId: 0, isSeeking: false, shuffle: false, repeatMode: "off", fullscreen: false, queue: [], searchRequestId: 0, featuredPlaylist: null, notes: [] };
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -170,6 +170,61 @@ function renderSearchResults(tracks) {
 }
 async function searchCatalog(query) { const requestId = ++state.searchRequestId; $("#search-results").hidden = false; $("#search-list").innerHTML = '<p class="queue-empty">Searching the record shop…</p>'; try { const data = await spotify(`/search?q=${encodeURIComponent(query)}&type=track&limit=20&market=from_token`); if (requestId !== state.searchRequestId) return; renderSearchResults((data.tracks?.items || []).filter((track) => track.is_playable !== false)); } catch (error) { if (requestId !== state.searchRequestId) return; $("#search-list").textContent = error.message; } }
 
+
+function loadListeningNotes() {
+  try { state.notes = JSON.parse(localStorage.getItem("noskip_listening_notes") || "[]"); }
+  catch { state.notes = []; }
+  renderListeningNotes();
+}
+function renderListeningNotes() {
+  const list = $("#notes-list");
+  if (!list) return;
+  list.innerHTML = "";
+  if (!state.notes.length) {
+    list.innerHTML = '<p class="notes-empty">Your journal is still blank. Save the first little memory.</p>';
+    return;
+  }
+  state.notes.slice(0, 6).forEach((note) => {
+    const article = document.createElement("article");
+    article.className = "note-card";
+    const date = document.createElement("time");
+    date.textContent = new Date(note.createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+    const title = document.createElement("strong");
+    title.textContent = note.track || "Listening note";
+    const body = document.createElement("p");
+    body.textContent = note.text;
+    article.append(date, title, body);
+    list.append(article);
+  });
+}
+function saveListeningNote(event) {
+  event.preventDefault();
+  const track = $("#note-track").value.trim() || $("#now-title").textContent.trim();
+  const note = $("#note-text").value.trim();
+  if (!note) {
+    $("#note-feedback").textContent = "Add a thought before saving.";
+    $("#note-text").focus();
+    return;
+  }
+  state.notes.unshift({ track, text: note, createdAt: Date.now() });
+  state.notes = state.notes.slice(0, 30);
+  localStorage.setItem("noskip_listening_notes", JSON.stringify(state.notes));
+  $("#note-track").value = "";
+  $("#note-text").value = "";
+  $("#note-feedback").textContent = "Filed in your personal journal.";
+  renderListeningNotes();
+}
+function setRoomMode(mode, persist = true) {
+  const valid = ["default", "after-hours", "sunday"].includes(mode) ? mode : "default";
+  document.body.dataset.roomMode = valid;
+  document.querySelectorAll(".mode-button").forEach((button) => {
+    const active = button.dataset.mode === valid;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  if (persist) localStorage.setItem("noskip_room_mode", valid);
+}
+
 function setCollectionView(view, updateUrl = true) {
   state.collectionView = view === "pile" ? "pile" : "shelf";
   document.querySelectorAll(".view-tab").forEach((tab) => {
@@ -230,8 +285,15 @@ function renderPlaylists() {
   shelf.innerHTML = "";
   if (!state.playlists.length) {
     shelf.innerHTML = '<p class="empty">No playlists found on this account yet.</p>';
+    $("#collection-count").textContent = "NO RECORDS YET";
     return;
   }
+  $("#collection-count").textContent = state.playlists.length + " COLLECTIONS · YOUR PERSONAL ARCHIVE";
+  const dayIndex = Math.floor(Date.now() / 86400000) % state.playlists.length;
+  state.featuredPlaylist = state.playlists[dayIndex];
+  $("#record-day-title").textContent = state.featuredPlaylist.name;
+  $("#record-day-caption").textContent = (state.featuredPlaylist.items?.total ?? state.featuredPlaylist.tracks?.total ?? "A collection") + " tracks · selected from your shelves for today";
+  $("#record-day-cover").src = imageFor(state.featuredPlaylist) || "./assets/studio-gh-mark.svg";
   state.playlists.forEach((playlist, index) => {
     const card = document.createElement("button");
     card.className = "record-card";
@@ -292,6 +354,9 @@ async function openPlaylist(playlist) {
     $("#booth-cover").src = imageFor(playlist) || "./assets/studio-gh-mark.svg";
     $("#vinyl-label").src = imageFor(playlist) || "./assets/studio-gh-mark.svg";
     $("#vinyl-label-text").textContent = playlist.name;
+    $("#detail-album").textContent = playlist.name;
+    $("#detail-artist").textContent = "Your personal collection";
+    $("#detail-format").textContent = all.length + " TRACKS · DIGITAL PRESSING";
     $("#booth").scrollIntoView({ behavior: "smooth", block: "center" });
     if (state.selectedTrack) await playTrack(state.selectedTrack);
     else $("#booth-caption").textContent = "No playable tracks in this playlist.";
@@ -409,6 +474,9 @@ async function connectPlayer() {
     $("#now-title").textContent = track.name;
     $("#now-artist").textContent = track.artists.map((artist) => artist.name).join(", ");
     $("#now-cover").src = track.album.images?.[0]?.url || "./assets/studio-gh-mark.svg";
+    $("#detail-album").textContent = track.album?.name || track.name;
+    $("#detail-artist").textContent = trackArtists(track) || "Unknown artist";
+    $("#detail-format").textContent = track.album?.release_date ? "RELEASED " + track.album.release_date.slice(0,4) + " · DIGITAL PRESSING" : "DIGITAL PRESSING";
     $("#play-toggle").textContent = playback.paused ? "▶" : "Ⅱ";
   });
   player.addListener("initialization_error", ({ message }) => setStatus(message, "error"));
@@ -523,6 +591,16 @@ async function boot() {
     setStatus("Spotify disconnected");
   });
   $("#search-form").addEventListener("submit", (event) => { event.preventDefault(); const query = $("#catalog-search").value.trim(); if (query) searchCatalog(query); });
+  $("#record-day-open").addEventListener("click", () => { if (state.featuredPlaylist) openPlaylist(state.featuredPlaylist); });
+  $("#note-form").addEventListener("submit", saveListeningNote);
+  loadListeningNotes();
+  setRoomMode(localStorage.getItem("noskip_room_mode") || "default", false);
+  document.querySelectorAll(".mode-button").forEach((button) => button.addEventListener("click", () => setRoomMode(button.dataset.mode)));
+  $("#player-expand").addEventListener("click", () => {
+    const expanded = document.body.classList.toggle("player-expanded");
+    $("#player-expand").setAttribute("aria-expanded", String(expanded));
+    $("#player-expand").textContent = expanded ? "−" : "+";
+  });
   $("#play-toggle").addEventListener("click", togglePlayback);
   $("#shuffle-toggle").addEventListener("click", toggleShuffle);
   $("#repeat-toggle").addEventListener("click", cycleRepeat);

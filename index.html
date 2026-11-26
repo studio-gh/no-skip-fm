@@ -15,16 +15,18 @@
   <header class="topbar">
     <a class="brand" href="./"><img src="./assets/studio-gh-mark.svg" alt=""><span>No.Skip<span>.</span>FM</span></a>
     <div class="top-note"><i class="dot"></i> YOUR PRIVATE LISTENING ROOM</div>
+    <div class="room-modes" role="group" aria-label="Listening room atmosphere"><button class="mode-button active" data-mode="default" aria-pressed="true">DAYLIGHT</button><button class="mode-button" data-mode="after-hours" aria-pressed="false">AFTER HOURS</button><button class="mode-button" data-mode="sunday" aria-pressed="false">SUNDAY</button></div>
     <button id="disconnect-button" class="secondary" hidden>Disconnect</button>
   </header>
   <main>
     <section class="hero">
       <div class="hero-copy">
-        <p class="eyebrow">THE RECORDS ARE WAITING</p>
+        <p class="eyebrow">INDEPENDENT LISTENING CLUB · VOL. 01</p>
         <h1>Skip the feed.<br><em>Play the record.</em></h1>
-        <p>Your Spotify playlists, reimagined as a little record shop. Pick a sleeve, pull a record, and let the room play.</p>
+        <p>Your records, your rituals. A little place to get lost in the music, one sleeve at a time.</p>
         <button id="connect-button" class="primary">Connect Spotify ↗</button>
-        <div id="status" class="status" role="status" aria-live="polite">Connect your Spotify Premium account to open the shop.</div>
+        <div id="status" class="status" role="status" aria-live="polite">Connect Spotify Premium to unlock your shelves.</div>
+        <div class="hero-index"><span>NO. 001</span><span>CURATED FOR THE LONG WAY AROUND</span></div>
       </div>
       <div class="hero-art"><img src="./assets/studio-gh-mark.svg" alt=""></div>
     </section>
@@ -34,7 +36,7 @@
         <p>YOUR PLAYLISTS · YOUR RECORDS</p>
       </div>
       
-      <form id="search-form" class="catalog-search" role="search"><span class="search-mark">⌕</span><input id="catalog-search" type="search" placeholder="Search all of Spotify, not just your playlists…" autocomplete="off" aria-label="Search Spotify catalog"><button type="submit">SEARCH ↗</button></form>
+      <section class="digging-room"><div class="subsection-head"><div><p class="eyebrow">THE DIGGING ROOM</p><h3>Looking for something?</h3><p class="section-note">Search beyond your own shelves.</p></div><span class="section-index">02 / DISCOVERY</span></div><form id="search-form" class="catalog-search" role="search"><span class="search-mark">⌕</span><input id="catalog-search" type="search" placeholder="Artist, album, track… go digging" autocomplete="off" aria-label="Search Spotify catalog"><button type="submit">DIG ↗</button></form></section>
       <section id="search-results" class="search-results" hidden><div class="subsection-head"><div><p class="eyebrow">OUTSIDE YOUR COLLECTION</p><h3>Found in the wider record shop.</h3></div></div><div id="search-list" class="search-list"></div></section>
       <div class="browse-switch" role="group" aria-label="Collection view">
         <button class="view-tab active" data-view="shelf">SHELF</button>
@@ -52,9 +54,10 @@
             <div class="deck-brand">NO.SKIP.FM <span>33⅓ RPM</span></div>
           </div>
         </div>
-        <div class="booth-actions"><button id="return-record" class="return-button" disabled>RETURN RECORD TO SHELF ↗</button><span class="booth-action-note">PLAYBACK CONTROLLED BELOW</span></div>
+        <div class="booth-details" id="booth-details"><div><span class="detail-label">NOW SPINNING</span><strong id="detail-album">Select a record</strong></div><div><span class="detail-label">ARTIST / CURATOR</span><strong id="detail-artist">Your collection</strong></div><div><span class="detail-label">FORMAT</span><strong id="detail-format">33⅓ RPM · DIGITAL PRESSING</strong></div></div><div class="booth-actions"><button id="return-record" class="return-button" disabled>RETURN RECORD TO SHELF ↗</button><span class="booth-action-note">PLAYBACK CONTROLLED BELOW</span></div>
         <p class="booth-footnote">SELECT A RECORD · DROP IT ON THE PLATTER · ENJOY THE SIDE</p>
       </section>
+      <section class="listening-notes" aria-labelledby="notes-title"><div class="subsection-head"><div><p class="eyebrow">THE LISTENING JOURNAL</p><h3 id="notes-title">Keep a note.</h3><p class="section-note">A line, a feeling, a track to remember.</p></div><span class="section-index">03 / PERSONAL ARCHIVE</span></div><form id="note-form" class="note-form"><input id="note-track" type="text" maxlength="90" placeholder="What are you listening to?" aria-label="Track or album for note"><textarea id="note-text" rows="2" maxlength="500" placeholder="Leave a little note for later…" aria-label="Listening note"></textarea><div class="note-form-foot"><span id="note-feedback" role="status">Saved only in this browser.</span><button type="submit" class="text-action">SAVE NOTE ↗</button></div></form><div id="notes-list" class="notes-list"></div></section>
       <section id="queue-panel" class="queue-panel"><div class="subsection-head"><div><p class="eyebrow">THE LISTENING QUEUE</p><h3>Coming up.</h3></div><span id="queue-count" class="queue-count">0 UP NEXT</span></div><div id="queue-list" class="queue-list"><p class="queue-empty">Start playing a record to see what is next.</p></div></section>
       <section id="collection" class="collection" hidden>
         <p class="eyebrow">NOW BROWSING · SELECT A TRACK TO PLAY</p>
@@ -66,7 +69,7 @@
   </main>
   <aside id="player" class="player" hidden>
     <div class="now-playing"><img id="now-cover" src="./assets/studio-gh-mark.svg" alt=""><div class="now-copy"><strong id="now-title">Nothing playing</strong><small id="now-artist">Choose a record</small></div></div>
-    <div class="controls"><button id="shuffle-toggle" class="utility-control" aria-label="Shuffle off" aria-pressed="false" title="Shuffle">⤨</button><button id="previous" class="transport" aria-label="Previous track" title="Previous track">↶</button><button id="play-toggle" class="play" aria-label="Play or pause" title="Play or pause">▶</button><button id="next" class="transport" aria-label="Next track" title="Next track">↷</button><button id="fullscreen-toggle" class="fullscreen-control" aria-label="Enter listening mode" title="Listening mode">⛶</button><button id="repeat-toggle" class="utility-control" aria-label="Repeat off" aria-pressed="false" title="Repeat: off">↻</button></div>
+    <button id="player-expand" class="player-expand" aria-expanded="false" aria-label="More player controls">＋</button><div class="controls"><button id="shuffle-toggle" class="utility-control" aria-label="Shuffle off" aria-pressed="false" title="Shuffle">⤨</button><button id="previous" class="transport" aria-label="Previous track" title="Previous track">↶</button><button id="play-toggle" class="play" aria-label="Play or pause" title="Play or pause">▶</button><button id="next" class="transport" aria-label="Next track" title="Next track">↷</button><button id="fullscreen-toggle" class="fullscreen-control" aria-label="Enter listening mode" title="Listening mode">⛶</button><button id="repeat-toggle" class="utility-control" aria-label="Repeat off" aria-pressed="false" title="Repeat: off">↻</button></div>
     <label class="volume">VOL <input id="volume" type="range" min="0" max="100" value="78" aria-label="Volume"></label>
     <div class="player-progress"><span id="elapsed">0:00</span><input id="progress" type="range" min="0" max="1000" value="0" aria-label="Track progress"><span id="duration">0:00</span></div>
     <span id="player-state" hidden>PLAYER OFFLINE</span>

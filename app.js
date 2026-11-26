@@ -539,9 +539,23 @@ async function playTrack(track) {
     }
     if (!state.deviceId) throw new Error("The Spotify player is offline. Reconnect Spotify and try again.");
     await state.player.activateElement();
+
+    // Keep Spotify inside the selected playlist context so it can advance
+    // automatically when the current track finishes.
+    const belongsToCurrentPlaylist = Boolean(
+      state.currentPlaylist?.id &&
+      state.currentTracks.some((item) => item.uri === track.uri)
+    );
+    const playbackBody = belongsToCurrentPlaylist
+      ? {
+          context_uri: state.currentPlaylist.uri || `spotify:playlist:${state.currentPlaylist.id}`,
+          offset: { uri: track.uri }
+        }
+      : { uris: [track.uri] };
+
     await spotify(`/me/player/play?device_id=${encodeURIComponent(state.deviceId)}`, {
       method: "PUT",
-      body: JSON.stringify({ uris: [track.uri] })
+      body: JSON.stringify(playbackBody)
     });
     $("#turntable").classList.add("record-placed", "needle-down", "is-playing");
     $("#play-toggle").textContent = "Ⅱ";
